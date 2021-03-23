@@ -1,0 +1,15 @@
+https://github.com/pyannote/pyannote-audio/archive/develop.zip
+torchaudio>=0.7.2
+torch>=1.7.1
+pytest==6.2.2
+scipy==1.6.0
+torch_optimizer==0.1.0
+tqdm==4.55.0
+pyworld==0.2.12
+hydra_core>=1.0.6
+omegaconf==2.0.6
+jsonargparse==3.5.0
+transformers==4.3.2
+numpy==1.20.1
+hydra==2.5
+librosa==0.8.0

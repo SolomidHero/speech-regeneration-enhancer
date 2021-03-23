@@ -1,0 +1,15 @@
+batch_size: 2
+epochs: 1
+num_workers: 4
+n_gpu: null
+
+stdout_interval: 1
+checkpoint_interval: 1
+summary_interval: 1
+validation_interval: 1
+ckpt_dir: 'tests/test_experiment/'
+
+dist_config:
+  dist_backend: nccl
+  dist_url: tcp://localhost:54321
+  world_size: 1

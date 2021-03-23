@@ -1,0 +1,58 @@
+opt:
+  lr: 3e-4
+  betas: [0.8, 0.99]
+  lr_decay: 0.995
+
+data:
+  segment_size: 9600 # of target audio (should be divisible by upsampling rate (mult of upsamples))
+  sample_rate: 16000
+  target_sample_rate: 24000
+  hop_length: 320   # should match 20ms of source audio
+  n_fft: 1280       # for loudness
+  win_length: 1280  # for loudness
+  f_min: 50         # for f0
+  f_max: null       # for f0
+
+seed: 17
+
+model:
+  feature_dims: [768, 1, 1] # ppg_dim, f0_dim, loud_dim
+  cond_dims: [512, 128] # spk_emb_dim, z_dim
+
+  generator:
+    hidden_dim: 768
+    n_blocks: 7
+    upsamples: [2, 2, 2, 3, 4, 5]
+    channel_divs: [1, 1, 2, 1, 1, 2, 2]
+
+  discriminator:
+    out_channels: [16, 64, 256, 1024, 1024, 1024, 1]
+    kernels: [15, 41, 41, 41, 41, 5, 3]
+    downsamples: [1, 2, 2, 4, 4, 1, 1]
+    lrelu_slope: 0.2
+
+train:
+  batch_size: 16
+  epochs: 1000
+  num_workers: 4
+  n_gpu: null   # will be defined on training
+
+  stdout_interval: 10
+  checkpoint_interval: 5000
+  summary_interval: 100
+  validation_interval: 1000
+  ckpt_dir: 'ckpts'
+
+  dist_config:
+    dist_backend: nccl
+    dist_url: tcp://localhost:54321
+    world_size: 1
+
+dataset:
+  wav_dir: 'data/wavs'
+  ppg_dir: 'data/ppg'
+  f0_dir: 'data/f0'
+  loudness_dir: 'data/loudness'
+  spk_embs_file: 'data/spk_embs.pt'
+  train_list: 'data/train.list'
+  test_list: 'data/test.list'

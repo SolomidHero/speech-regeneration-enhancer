@@ -1,0 +1,7 @@
+wav_dir: 'tests/data'
+ppg_dir: 'tests/test_dataset/ppg'
+f0_dir: 'tests/test_dataset/f0'
+loudness_dir: 'tests/test_dataset/loudness'
+spk_embs_file: 'tests/test_dataset/spk_embs.pt'
+train_list: 'tests/test_dataset/train.list'
+test_list: 'tests/test_dataset/test.list'
