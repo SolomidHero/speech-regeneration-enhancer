@@ -26,6 +26,7 @@ NCCL 2+ (for distributed multi-gpu training) -->
   - librosa 0.8.0+
   - pytest 6.2.0+
   - transformers 4.3.0+, pyworld 0.2.12+, pyannote.audio 2.0+ (for feature extraction)
+- (optional) ffmpeg (for .mp3 support, you can install via `sudo apt install ffmpeg` in ubuntu)
 
 # Installation
 
