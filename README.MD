@@ -13,8 +13,8 @@ This repository provides speech enhancement via regeneration implementation with
 
 This repository is tested on Ubuntu 16.04 with a GPU 1080 Ti.
 
-- Python 3.7+
-- Cuda 10.0+
+- Python 3.7+ (follow [installation page](https://www.python.org/downloads/))
+- Cuda 10.0+ ([guide for ubuntu](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html))
 <!-- CuDNN 7+
 NCCL 2+ (for distributed multi-gpu training) -->
 - libsndfile (you can install via `sudo apt install libsndfile-dev` in ubuntu)
