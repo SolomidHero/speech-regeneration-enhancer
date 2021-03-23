@@ -1,4 +1,5 @@
-# Regeneration Enhancer ![python app workflow](https://github.com/github/docs/actions/workflows/python-app.yml/badge.svg)
+# Regeneration Enhancer
+[![Python application](https://github.com/SolomidHero/speech-regeneration-enhancer/actions/workflows/python-app.yml/badge.svg)](https://github.com/SolomidHero/speech-regeneration-enhancer/actions/workflows/python-app.yml)
 
 This repository provides speech enhancement via regeneration implementation with Pytorch. Algorithm is based on [paper](https://arxiv.org/abs/2102.00429), but several changes were made in feature extraction and therefore model parameters.
 
@@ -12,7 +13,7 @@ This repository provides speech enhancement via regeneration implementation with
 
 This repository is tested on Ubuntu 16.04 with a GPU 1080 Ti.
 
-- Python 3.6+
+- Python 3.7+
 - Cuda 10.0+
 <!-- CuDNN 7+
 NCCL 2+ (for distributed multi-gpu training) -->
