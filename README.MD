@@ -20,7 +20,7 @@ NCCL 2+ (for distributed multi-gpu training) -->
 - libsndfile (you can install via `sudo apt install libsndfile-dev` in ubuntu)
 <!-- - sox (you can install via `sudo apt install sox` in ubuntu) -->
 - pip requirements (defined in `requirements.txt`, install via `pip install -r requirements.txt`):
-  - hydra-core 2.0+
+  - hydra-core 1.0.6+
   - pytorch 1.7+
   - torchaudio 0.7.2+
   - librosa 0.8.0+
