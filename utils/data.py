@@ -104,7 +104,7 @@ class PreprocessDataset(torch.utils.data.Dataset):
     Assumes that wav files (all names are different)
     can be in some subdirectories of root dir.
   """
-  def __init__(self, filepathes, data_cfg, shuffle=True):
+  def __init__(self, filepathes, data_cfg):
     self.data_cfg = data_cfg
     self.audio_pathes = filepathes
     self.filenames = list(map(lambda p: Path(p).name, filepathes))
@@ -127,7 +127,7 @@ class FeatureDataset(torch.utils.data.Dataset):
     can be in some subdirectories of root dir,
     but feature files in corresponding feature directories alone.
   """
-  def __init__(self, dataset_cfg, filelist, data_cfg, shuffle=True, preload_gt=True, segmented=True, seed=17):
+  def __init__(self, dataset_cfg, filelist, data_cfg, preload_gt=True, segmented=True, seed=17):
     self.data_cfg = data_cfg
     self.dataset_cfg = dataset_cfg
     self.filelist = filelist

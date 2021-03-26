@@ -11,7 +11,7 @@ import torch
 from torch.utils.data import DataLoader
 from jsonargparse import ArgumentParser, ActionConfigFile
 
-from features import get_ppg, get_f0, get_loudness, get_speaker_embed
+from features import get_ppg, get_f0, get_loudness, get_speaker_embed, denoise
 from utils import (
   PreprocessDataset,
   get_datafolder_files, define_train_list, train_test_split, save_dataset_filelist
@@ -44,7 +44,7 @@ def main(cfg: DictConfig):
 
   # preprocess dataset and loader
   filepathes = get_datafolder_files(cfg.dataset.wav_dir)
-  dataset = PreprocessDataset(filepathes, cfg.data, shuffle=False)
+  dataset = PreprocessDataset(filepathes, cfg.data)
   dataloader = DataLoader(dataset, batch_size=1, shuffle=False, drop_last=False, num_workers=cfg.train.num_workers)
   spk_embs = dict()
 
@@ -53,7 +53,7 @@ def main(cfg: DictConfig):
   pbar = tqdm.tqdm(total=len(dataset), ncols=0)
   for wav, filename in dataloader:
     # batch size is 1
-    wav = wav[0].numpy()
+    wav = denoise(wav[0].numpy(), device=device)
     filename = Path(filename[0])
 
     with torch.no_grad():
@@ -77,10 +77,6 @@ def main(cfg: DictConfig):
     pbar.update(dataloader.batch_size)
 
   torch.save(spk_embs, cfg.dataset.spk_embs_file)
-  # or readable format
-  # with open(cfg.dataset.spk_embs_file, "w") as f:
-  #   for filename, spk_emb in spk_embs.items():
-  #     print(filename + ' '.join(map(str, spk_emb.numpy())), file=f)
 
   # generation of train and test files
   train_list = define_train_list(filepathes)

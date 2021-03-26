@@ -87,19 +87,18 @@ def train(rank: int, cfg: DictConfig):
 
   train_filelist = load_dataset_filelist(cfg.dataset.train_list)
   trainset = FeatureDataset(
-    cfg.dataset, train_filelist, cfg.data,
-    shuffle=False if cfg.train.n_gpu > 1 else True
+    cfg.dataset, train_filelist, cfg.data
   )
   train_sampler = DistributedSampler(trainset) if cfg.train.n_gpu > 1 else None
   train_loader = DataLoader(
-    trainset, batch_size=cfg.train.batch_size, num_workers=cfg.train.num_workers, shuffle=False,
+    trainset, batch_size=cfg.train.batch_size, num_workers=cfg.train.num_workers, shuffle=True,
     sampler=train_sampler, pin_memory=True, drop_last=True
   )
 
   if rank == 0:
     val_filelist = load_dataset_filelist(cfg.dataset.test_list)
     valset = FeatureDataset(
-      cfg.dataset, val_filelist, cfg.data, shuffle=False, segmented=False
+      cfg.dataset, val_filelist, cfg.data, segmented=False
     )
     val_loader = DataLoader(
       valset, batch_size=1, num_workers=cfg.train.num_workers, shuffle=False,
