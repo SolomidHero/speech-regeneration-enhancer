@@ -2,6 +2,7 @@
 # Implementation of necessary modules and enhancer model itself.
 
 import torch
+from .commons import Conv1d
 from torch import nn
 import torch.nn.functional as F
 from torch.nn.utils import spectral_norm
@@ -14,8 +15,8 @@ class ConditionalBatchNorm1d(nn.Module):
     self.bn = nn.BatchNorm1d(n_features, affine=False, eps=eps, momentum=momentum,)
 
     # linear layers
-    self.gamma_embed = spectral_norm(nn.Conv1d(cond_dim, n_features, 1, bias=False))
-    self.beta_embed = spectral_norm(nn.Conv1d(cond_dim, n_features, 1, bias=False))
+    self.gamma_embed = spectral_norm(Conv1d(cond_dim, n_features, 1, bias=False))
+    self.beta_embed = spectral_norm(Conv1d(cond_dim, n_features, 1, bias=False))
 
   def forward(self, x, y):
     out = self.bn(x)
@@ -44,15 +45,15 @@ class ResBlock(nn.Module):
     self.activation = activation
 
     self.conv0 = spectral_norm(
-      nn.Conv1d(in_channel, out_channel, kernel_size, stride, padding, bias=not bn)
+      Conv1d(in_channel, out_channel, kernel_size, stride, padding, bias=not bn)
     )
     self.conv1 = spectral_norm(
-      nn.Conv1d(out_channel, out_channel, kernel_size, stride, padding, bias=not bn)
+      Conv1d(out_channel, out_channel, kernel_size, stride, padding, bias=not bn)
     )
 
     self.skip_proj = False
     if in_channel != out_channel or upsample != 1:
-      self.conv_skip = spectral_norm(nn.Conv1d(in_channel, out_channel, 1, 1, 0))
+      self.conv_skip = spectral_norm(Conv1d(in_channel, out_channel, 1, 1, 0))
       self.skip_proj = True
 
     self.bn = bn
@@ -123,12 +124,12 @@ class Generator(nn.Module):
     from itertools import accumulate
     channel_divs = list(accumulate([1] + channel_divs, lambda x, y: x * y))
 
-    self.input_conv = spectral_norm(nn.Conv1d(in_channel, hidden_dim, 3, 1, 1))
+    self.input_conv = spectral_norm(Conv1d(in_channel, hidden_dim, 3, 1, 1))
     self.gblocks = nn.ModuleList([
       GBlock(hidden_dim // channel_divs[i], hidden_dim // channel_divs[i + 1], cond_dim + z_dim, upsamples[i])
       for i in range(len(upsamples))
     ])
-    self.output_conv = spectral_norm(nn.Conv1d(hidden_dim // channel_divs[-1], 1, 1, 1, 0))
+    self.output_conv = spectral_norm(Conv1d(hidden_dim // channel_divs[-1], 1, 1, 1, 0))
     self.tanh = nn.Tanh()
 
   def forward(self, x, cond, z=None):
@@ -163,7 +164,7 @@ class Discriminator(nn.Module):
 
     self.lrelu = nn.LeakyReLU(lrelu_slope)
     self.convs = nn.ModuleList([
-      spectral_norm(nn.Conv1d(in_c, out_c, kernel_size, stride=down, padding=0))
+      spectral_norm(Conv1d(in_c, out_c, kernel_size, stride=down, padding=0))
       for in_c, out_c, kernel_size, down in zip([1] + out_channels[:-1], out_channels, kernels, downsamples)
     ])
 
