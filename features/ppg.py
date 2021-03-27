@@ -10,20 +10,38 @@ import torch
 def load_wav2vec2(ckpt_path='facebook/wav2vec2-base-960h'):
   """Load pretrained Wav2Vec2 model."""
   def extract_features(self, wav, mask):
-    # wav2vec has window of 400, so we pad to center windows
-    wav = torch.nn.functional.pad(wav.unsqueeze(1), (200, 200), mode='reflect').squeeze(1)
     return [self(wav).last_hidden_state]
 
   Wav2Vec2Model.extract_features = extract_features # for same behaviour as fairseq.Wav2Vec2Model
-  model = Wav2Vec2Model.from_pretrained(ckpt_path)
+  model = Wav2Vec2Model.from_pretrained(ckpt_path).eval()
   return model
 
 
-def get_ppg(wav, sr, device='cpu', backend='wav2vec2'):
+def get_ppg(wav, sr, device='cpu', backend='wav2vec2', max_window=20.0, overlap=2.0):
+  wav = torch.from_numpy(wav).unsqueeze(0).to(device)
+
   if backend == 'wav2vec2':
+    # wav2vec has window of 400 and hop of 320,
+    # so we pad to center windows
+    wav = torch.nn.functional.pad(wav.unsqueeze(1), (200, 200), mode='reflect').squeeze(1)
     model = load_wav2vec2().to(device)
 
     with torch.no_grad():
-      ppg = model.extract_features(torch.from_numpy(wav).unsqueeze(0).to(device), None)[0]
+      if wav.shape[-1] / sr > max_window:
+        segment_n_points = int(max_window * sr) // 320 * 320
+        overlap_n_points = int(overlap * sr) // 320 * 320
+        hop_segment_len = segment_n_points - overlap_n_points
 
-  return ppg.squeeze(0).cpu().numpy()
+        n_segments = (wav.shape[-1] - segment_n_points) // hop_segment_len + 1
+        ppgs = []
+        for i in range(n_segments - 1):
+          sub_wav = wav[i * hop_segment_len:i * hop_segment_len + segment_n_points]
+          cur_ppg = model.extract_features(sub_wav, None)[0]
+          cur_ppg = cur_ppg[overlap_n_points // 320:] if i > 0 else cur_ppg
+          ppgs.append(cur_ppg.squeeze(0).cpu())
+
+        ppg = torch.cat(ppgs, dim=0)
+      else:
+        ppg = model.extract_features(wav, None)[0].squeeze(0).cpu()
+
+  return ppg.numpy()

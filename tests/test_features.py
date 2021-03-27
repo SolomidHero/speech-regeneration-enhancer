@@ -60,12 +60,24 @@ def ppg(example_wav, hop_ms):
   ppg = get_ppg(example_wav['wav'], example_wav['sr'], backend='wav2vec2')
   return ppg
 
-def test_ppg(ppg, example_wav):
+@pytest.fixture(scope='module')
+def ppg_windowed(example_wav, hop_ms):
+  from features import get_ppg
+  ppg = get_ppg(example_wav['wav'], example_wav['sr'], backend='wav2vec2', max_window=1.0, overlap=0.1)
+  return ppg
+
+
+def test_ppg(ppg, ppg_windowed, example_wav):
   # wav2vec2 has 320 stride, receptive field (window) 400
   desired_len = example_wav['wav'].shape[-1] // 320 + 1
   assert len(ppg.shape) == 2
+  assert len(ppg_windowed.shape) == 2
+
   assert ppg.shape[0] == desired_len
+  assert ppg_windowed.shape[0] == desired_len
+
   assert ppg.dtype == np.float32
+  assert ppg_windowed.dtype == np.float32
 
 
 def test_features_alignment(speaker_embed, loudness, f0, ppg):
