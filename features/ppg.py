@@ -26,7 +26,7 @@ def get_ppg(wav, sr, device='cpu', backend='wav2vec2', max_window=20.0, overlap=
     hop_length = 320
     win_length = 400
 
-    n_frames = wav.shape[1] // 320 + 1
+    n_frames = wav.shape[1] // hop_length + 1
     wav = torch.nn.functional.pad(wav.unsqueeze(1), (win_length // 2, win_length // 2), mode='reflect').squeeze(1)
     model = load_wav2vec2().to(device)
 

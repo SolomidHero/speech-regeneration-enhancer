@@ -9,6 +9,5 @@ tqdm==4.55.0
 pyworld==0.2.12
 hydra_core>=1.0.6
 omegaconf==2.0.6
-jsonargparse==3.5.0
 transformers==4.3.2
 librosa==0.8.0

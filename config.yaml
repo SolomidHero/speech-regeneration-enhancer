@@ -56,3 +56,7 @@ dataset:
   spk_embs_file: 'data/spk_embs.pt'
   train_list: 'data/train.list'
   test_list: 'data/test.list'
+
+hydra:
+  run:
+    dir: .
