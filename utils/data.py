@@ -127,16 +127,18 @@ class FeatureDataset(torch.utils.data.Dataset):
     can be in some subdirectories of root dir,
     but feature files in corresponding feature directories alone.
   """
-  def __init__(self, dataset_cfg, filelist, data_cfg, preload_gt=True, segmented=True, seed=17):
+  def __init__(self, dataset_cfg, filelist, data_cfg, preload_gt=True, segmented=True, segment_size=None, seed=17):
     self.data_cfg = data_cfg
     self.dataset_cfg = dataset_cfg
     self.filelist = filelist
     self.segmented = segmented
     self.upsampling_rate = self.data_cfg.hop_length * self.data_cfg.target_sample_rate // self.data_cfg.sample_rate
     if self.segmented:
-      assert self.data_cfg.segment_size % (self.data_cfg.hop_length * self.data_cfg.target_sample_rate // self.data_cfg.sample_rate) == 0
+      segment_size = self.data_cfg.segment_size if segment_size is None else segment_size
 
-      self.n_points = self.data_cfg.segment_size
+      assert segment_size % (self.data_cfg.hop_length * self.data_cfg.target_sample_rate // self.data_cfg.sample_rate) == 0
+
+      self.n_points = segment_size
       self.n_frames = self.n_points // self.upsampling_rate
 
     self.noise_to_gt_dict = dict()

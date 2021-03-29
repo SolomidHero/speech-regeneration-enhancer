@@ -2,11 +2,9 @@
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-import itertools
 import os
 import time
-import argparse
-import json
+from tqdm.auto import tqdm
 
 import torch
 from torch.utils.tensorboard import SummaryWriter
@@ -29,7 +27,6 @@ from omegaconf import DictConfig, OmegaConf
 import hydra
 
 torch.backends.cudnn.benchmark = True
-criterion = MultiResolutionSTFTLoss()
 
 
 def train(rank: int, cfg: DictConfig):
@@ -42,6 +39,7 @@ def train(rank: int, cfg: DictConfig):
     )
 
   device = torch.device('cuda:{:d}'.format(rank) if torch.cuda.is_available() else 'cpu')
+  criterion = MultiResolutionSTFTLoss(device=device)
 
   generator = Generator(
     sum(cfg.model.feature_dims),
@@ -85,9 +83,10 @@ def train(rank: int, cfg: DictConfig):
   scheduler_g = torch.optim.lr_scheduler.ExponentialLR(optim_g, gamma=cfg.opt.lr_decay, last_epoch=last_epoch)
   scheduler_d = torch.optim.lr_scheduler.ExponentialLR(optim_d, gamma=cfg.opt.lr_decay, last_epoch=last_epoch)
 
+  print("Preparing train data...")
   train_filelist = load_dataset_filelist(cfg.dataset.train_list)
   trainset = FeatureDataset(
-    cfg.dataset, train_filelist, cfg.data
+    cfg.dataset, train_filelist, cfg.data, segmented=True, preload_gt=True, seed=cfg.seed
   )
   train_sampler = DistributedSampler(trainset) if cfg.train.n_gpu > 1 else None
   train_loader = DataLoader(
@@ -96,9 +95,11 @@ def train(rank: int, cfg: DictConfig):
   )
 
   if rank == 0:
+    print("Preparing validation data...")
     val_filelist = load_dataset_filelist(cfg.dataset.test_list)
     valset = FeatureDataset(
-      cfg.dataset, val_filelist, cfg.data, segmented=False
+      cfg.dataset, val_filelist, cfg.data, segmented=True, preload_gt=True,
+      segment_size=cfg.data.segment_size * cfg.train.batch_size
     )
     val_loader = DataLoader(
       valset, batch_size=1, num_workers=cfg.train.num_workers, shuffle=False,
@@ -137,15 +138,17 @@ def train(rank: int, cfg: DictConfig):
 
       optim_d.zero_grad()
       d_loss.backward(retain_graph=True)
+      d_grad_norm = torch.nn.utils.clip_grad_norm_(discriminator.parameters(), cfg.train.grad_clip_value)
       optim_d.step()
 
       # Generator
       g_stft_loss = criterion(y, y_hat1) + criterion(y, y_hat2) - criterion(y_hat1, y_hat2)
       g_adv_loss = adversarial_loss(fake_scores)
-      g_loss = g_adv_loss + g_stft_loss
+      g_loss = g_adv_loss + cfg.train.lambda_adv * g_stft_loss
 
       optim_g.zero_grad()
       g_loss.backward()
+      g_grad_norm = torch.nn.utils.clip_grad_norm_(generator.parameters(), cfg.train.grad_clip_value)
       optim_g.step()
 
       if rank == 0:
@@ -174,27 +177,36 @@ def train(rank: int, cfg: DictConfig):
 
         # Tensorboard summary logging
         if steps % cfg.train.summary_interval == 0:
-          sw.add_scalar("training/gen_loss_total", g_loss, steps)
-          sw.add_scalar("training/gen_stft_error", g_stft_loss, steps)
+          sw.add_scalar("loss/g_loss_total", g_loss, steps)
+          sw.add_scalar("loss/g_stft_error", g_stft_loss, steps)
+          sw.add_scalar("loss/d_loss", d_loss, steps)
+          sw.add_scalar("grad/d_grad_norm", d_grad_norm, steps)
+          sw.add_scalar("grad/g_grad_norm", g_grad_norm, steps)
 
         # Validation
         if steps % cfg.train.validation_interval == 0:
           generator.eval()
           torch.cuda.empty_cache()
+
           val_err_tot = 0
-          with torch.no_grad():
-            for j, (y, x_noised_features, x_noised_cond) in enumerate(val_loader):
+          val_pbar = tqdm(total=len(valset), ncols=0, desc="Valid", unit=" uttr")
+
+          for j, (y, x_noised_features, x_noised_cond) in enumerate(val_loader):
+            with torch.no_grad():
               y_hat = generator(x_noised_features.transpose(1, 2).to(device), x_noised_cond.to(device))
-              val_err_tot += criterion(y, y_hat).item()
+              val_err_tot += criterion(y.to(device), y_hat).item()
 
-              if j <= 4:
-                # sw.add_audio('noised/y_noised_{}'.format(j), y_noised[0], steps, cfg.data.target_sample_rate)
-                sw.add_audio('generated/y_hat_{}'.format(j), y_hat[0], steps, cfg.data.sample_rate)
-                sw.add_audio('gt/y_{}'.format(j), y[0], steps, cfg.data.sample_rate)
+            if j <= 4:
+              sw.add_audio('generated/y_hat_{}'.format(j), y_hat[0], steps, cfg.data.target_sample_rate)
+              sw.add_audio('gt/y_{}'.format(j), y[0], steps, cfg.data.target_sample_rate)
 
-            val_err = val_err_tot / (j+1)
-            sw.add_scalar("validation/stft_error", val_err, steps)
+            val_pbar.update(val_loader.batch_size)
+            val_pbar.set_postfix(loss=f"{val_err_tot / (j + 1):.2f}")
 
+          val_err = val_err_tot / (j + 1)
+          sw.add_scalar("validation/stft_error", val_err, steps)
+
+          val_pbar.close()
           generator.train()
 
       steps += 1
@@ -204,6 +216,7 @@ def train(rank: int, cfg: DictConfig):
 
     if rank == 0:
       print('Time taken for epoch {} is {} sec\n'.format(epoch + 1, int(time.time() - start)))
+
 
 @hydra.main(config_name="config")
 def main(cfg: DictConfig):

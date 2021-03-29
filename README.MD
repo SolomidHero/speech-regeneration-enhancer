@@ -8,6 +8,7 @@ This repository provides speech enhancement via regeneration implementation with
 - implement streaming model and its inference
 - provide multilingual enhancement models (and adapt feature extraction too)
 - make pypi package
+- release pretrained models
 
 # Requirements
 

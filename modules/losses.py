@@ -14,14 +14,17 @@ def discriminator_loss(fake_scores, real_scores):
   return loss
 
 
-def stft(x, n_fft, hop_length, win_length, window):
+def stft(x, n_fft, hop_length, win_length, window, eps=1e-6):
     """Perform STFT and convert to magnitude spectrogram.
     Args:
       x: Input signal tensor (B, T).
     Returns:
       Tensor: Magnitude spectrogram (B, T, n_fft // 2 + 1).
     """
-    x_stft = torch.stft(x, n_fft, hop_length, win_length, window, center=False, return_complex=True).abs()
+    x_stft = torch.stft(x,
+      n_fft, hop_length, win_length, window,
+      center=False, return_complex=True
+    ).abs().clamp(min=eps)
 
     return x_stft
 
@@ -32,10 +35,17 @@ class SpectralConvergence(nn.Module):
     super().__init__()
 
   def forward(self, predicts_mag, targets_mag):
-    x = torch.norm(targets_mag - predicts_mag, p='fro')
-    y = torch.norm(targets_mag, p='fro')
+    """Calculate norm of difference operator.
+    Args:
+      predicts_mag (Tensor): Magnitude spectrogram of predicted signal (B, #frames, #freq_bins).
+      targets_mag  (Tensor): Magnitude spectrogram of groundtruth signal (B, #frames, #freq_bins).
+    Returns:
+      Tensor: Spectral convergence loss value.
+    """
 
-    return x / y 
+    return torch.mean(
+      torch.norm(targets_mag - predicts_mag, dim=(1, 2), p='fro') / torch.norm(targets_mag, dim=(1, 2), p='fro')
+    )
 
 
 class LogSTFTMagnitude(nn.Module):
@@ -52,13 +62,13 @@ class LogSTFTMagnitude(nn.Module):
 
 
 class STFTLoss(nn.Module):
-  def __init__(self, n_fft, hop_length, win_length):
+  def __init__(self, n_fft, hop_length, win_length, device='cpu'):
     super().__init__()
 
     self.n_fft = n_fft
     self.hop_length = hop_length
     self.win_length = win_length
-    self.window = torch.hann_window(win_length)
+    self.window = torch.hann_window(win_length).to(device)
     self.sc_loss = SpectralConvergence()
     self.mag_loss = LogSTFTMagnitude()
 
@@ -84,12 +94,13 @@ class MultiResolutionSTFTLoss(nn.Module):
   def __init__(self,
     fft_sizes=[2048, 1024, 512, 256, 128, 64],
     win_sizes=[2048, 1024, 512, 256, 128, 64],
-    hop_sizes=[512, 256, 128, 64, 32, 16]
+    hop_sizes=[512, 256, 128, 64, 32, 16],
+    device='cpu'
   ):
     super().__init__()
 
     self.loss_layers = torch.nn.ModuleList([
-      STFTLoss(n_fft, hop_length, win_length)
+      STFTLoss(n_fft, hop_length, win_length, device=device)
       for n_fft, win_length, hop_length in zip(fft_sizes, win_sizes, hop_sizes)
     ])
 

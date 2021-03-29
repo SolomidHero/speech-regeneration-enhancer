@@ -1,9 +1,9 @@
-require 'spec_helper'
+require_relative '../spec_helper'
 
 
 # ml packages
 describe package('torch') do
-  it { should be_installed.by('pip').with_version('1.7.1') }
+  it { should be_installed.by('pip').with_version('1.8.0') }
 end
 
 describe package('torch-optimizer') do
@@ -33,7 +33,7 @@ describe package('librosa') do
 end
 
 describe package('torchaudio') do
-  it { should be_installed.by('pip').with_version('0.7.2') }
+  it { should be_installed.by('pip').with_version('0.8.0') }
 end
 
 describe package('transformers') do
