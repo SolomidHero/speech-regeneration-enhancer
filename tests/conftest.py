@@ -65,4 +65,4 @@ def n_frames(example_wav, hop_length):
 @pytest.fixture(autouse=True, scope='session')
 def clear_files_teardown():
   yield None
-  os.system("rm -r tests/test_dataset tests/test_experiment")
+  os.system("rm -r tests/test_dataset tests/test_experiment tests/test_logs")

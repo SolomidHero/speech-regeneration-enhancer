@@ -25,6 +25,14 @@ def n_files(cfg):
   return n_files
 
 
+def test_config_consistency(cfg):
+  with initialize(config_path="../"):
+    train_config = compose(config_name="config")
+
+  assert set(train_config.dataset.keys()) == set(cfg.dataset.keys())
+  assert set(train_config.train.keys()) == set(cfg.train.keys())
+
+
 def test_preprocess(cfg, n_files):
   preprocess_main(cfg)
 

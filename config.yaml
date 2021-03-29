@@ -44,7 +44,7 @@ train:
   lambda_adv: 4.0
   grad_clip_value: 1.0
   ckpt_dir: 'ckpts'
-  log_dir: 'logs'
+  logs_dir: 'logs'
 
   dist_config:
     dist_backend: nccl

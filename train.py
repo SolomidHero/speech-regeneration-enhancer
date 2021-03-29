@@ -107,7 +107,7 @@ def train(rank: int, cfg: DictConfig):
       sampler=train_sampler, pin_memory=True
     )
 
-    log_dir = f'{cfg.train.log_dir}/{datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")}'
+    log_dir = f'{cfg.train.logs_dir}/{datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")}'
     sw = SummaryWriter(log_dir)
 
   generator.train()
