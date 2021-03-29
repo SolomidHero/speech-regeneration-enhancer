@@ -10,6 +10,7 @@ validation_interval: 1
 lambda_adv: 4.0
 grad_clip_value: 1.0
 ckpt_dir: 'tests/test_experiment/'
+log_dir: 'tests/logs'
 
 dist_config:
   dist_backend: nccl

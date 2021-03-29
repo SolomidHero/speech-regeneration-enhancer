@@ -4,6 +4,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 import os
 import time
+import datetime
 from tqdm.auto import tqdm
 
 import torch
@@ -106,7 +107,8 @@ def train(rank: int, cfg: DictConfig):
       sampler=train_sampler, pin_memory=True
     )
 
-    sw = SummaryWriter(os.path.join(cfg.train.ckpt_dir, 'logs'))
+    log_dir = f'{cfg.train.log_dir}/{datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")}'
+    sw = SummaryWriter(log_dir)
 
   generator.train()
   discriminator.train()
