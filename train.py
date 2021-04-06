@@ -14,7 +14,7 @@ import torch.multiprocessing as mp
 from torch.distributed import init_process_group
 from torch.nn.parallel import DistributedDataParallel
 
-from torch_optimizer import RAdam
+from torch.optim import AdamW
 from modules import (
   Generator, Discriminator,
   MultiResolutionSTFTLoss, adversarial_loss, discriminator_loss
@@ -42,6 +42,7 @@ def train(rank: int, cfg: DictConfig):
   device = torch.device('cuda:{:d}'.format(rank) if torch.cuda.is_available() else 'cpu')
   criterion = MultiResolutionSTFTLoss(device=device)
 
+  # Defining model (generator and discriminator)
   generator = Generator(
     sum(cfg.model.feature_dims),
     *cfg.model.cond_dims,
@@ -54,6 +55,7 @@ def train(rank: int, cfg: DictConfig):
     os.makedirs(cfg.train.ckpt_dir, exist_ok=True)
     print("checkpoints directory : ", cfg.train.ckpt_dir)
 
+  # Loading checkpoints (if exist)
   if os.path.isdir(cfg.train.ckpt_dir):
     cp_g = scan_checkpoint(cfg.train.ckpt_dir, 'g_')
     cp_do = scan_checkpoint(cfg.train.ckpt_dir, 'd_')
@@ -74,16 +76,19 @@ def train(rank: int, cfg: DictConfig):
     generator = DistributedDataParallel(generator, device_ids=[rank]).to(device)
     discriminator = DistributedDataParallel(discriminator, device_ids=[rank]).to(device)
 
-  optim_g = RAdam(generator.parameters(), cfg.opt.lr, betas=cfg.opt.betas)
-  optim_d = RAdam(discriminator.parameters(), cfg.opt.lr, betas=cfg.opt.betas)
+  # Defining optimizers
+  optim_g = AdamW(generator.parameters(), cfg.opt.lr, betas=cfg.opt.betas)
+  optim_d = AdamW(discriminator.parameters(), cfg.opt.lr, betas=cfg.opt.betas)
 
   if state_dict_do is not None:
     optim_g.load_state_dict(state_dict_do['optim_g'])
     optim_d.load_state_dict(state_dict_do['optim_d'])
 
+  # Defining schedulers
   scheduler_g = torch.optim.lr_scheduler.ExponentialLR(optim_g, gamma=cfg.opt.lr_decay, last_epoch=last_epoch)
   scheduler_d = torch.optim.lr_scheduler.ExponentialLR(optim_d, gamma=cfg.opt.lr_decay, last_epoch=last_epoch)
 
+  # Data preparation
   print("Preparing train data...")
   train_filelist = load_dataset_filelist(cfg.dataset.train_list)
   trainset = FeatureDataset(
@@ -110,6 +115,7 @@ def train(rank: int, cfg: DictConfig):
     log_dir = f'{cfg.train.logs_dir}/{datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")}'
     sw = SummaryWriter(log_dir)
 
+  # Train loop
   generator.train()
   discriminator.train()
   for epoch in range(max(0, last_epoch), cfg.train.epochs):
@@ -139,22 +145,23 @@ def train(rank: int, cfg: DictConfig):
       d_loss = discriminator_loss(real_scores, fake_scores)
 
       optim_d.zero_grad()
-      d_loss.backward(retain_graph=True)
-      d_grad_norm = torch.nn.utils.clip_grad_norm_(discriminator.parameters(), cfg.train.grad_clip_value)
+      d_loss.backward()
+      d_grad_norm = torch.nn.utils.clip_grad_norm_(discriminator.parameters(), cfg.train.grad_norm_clip_value)
       optim_d.step()
 
       # Generator
+      fake_scores = discriminator(y_hat1)
       g_stft_loss = criterion(y, y_hat1) + criterion(y, y_hat2) - criterion(y_hat1, y_hat2)
       g_adv_loss = adversarial_loss(fake_scores)
       g_loss = g_adv_loss + cfg.train.lambda_adv * g_stft_loss
 
       optim_g.zero_grad()
       g_loss.backward()
-      g_grad_norm = torch.nn.utils.clip_grad_norm_(generator.parameters(), cfg.train.grad_clip_value)
+      g_grad_norm = torch.nn.utils.clip_grad_norm_(generator.parameters(), cfg.train.grad_norm_clip_value)
       optim_g.step()
 
       if rank == 0:
-        # STDOUT logging
+        # stdout logging
         if steps % cfg.train.stdout_interval == 0:
           with torch.no_grad():
             print('Steps : {:d}, Gen Loss Total : {:4.3f}, STFT Error : {:4.3f}, s/b : {:4.3f}'.
@@ -180,8 +187,12 @@ def train(rank: int, cfg: DictConfig):
         # Tensorboard summary logging
         if steps % cfg.train.summary_interval == 0:
           sw.add_scalar("loss/g_loss_total", g_loss, steps)
-          sw.add_scalar("loss/g_stft_error", g_stft_loss, steps)
-          sw.add_scalar("loss/d_loss", d_loss, steps)
+          sw.add_scalar("loss/g_adv_plus_d_total", g_adv_loss.item() + d_loss.item(), steps)
+
+          sw.add_scalar("loss_component/g_stft_error", g_stft_loss, steps)
+          sw.add_scalar("loss_component/g_adv_loss", g_adv_loss, steps)
+          sw.add_scalar("loss_component/d_loss", d_loss, steps)
+
           sw.add_scalar("grad/d_grad_norm", d_grad_norm, steps)
           sw.add_scalar("grad/g_grad_norm", g_grad_norm, steps)
 

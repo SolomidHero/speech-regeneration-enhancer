@@ -164,7 +164,7 @@ class Discriminator(nn.Module):
 
     self.lrelu = nn.LeakyReLU(lrelu_slope)
     self.convs = nn.ModuleList([
-      spectral_norm(Conv1d(in_c, out_c, kernel_size, stride=down, padding=0))
+      spectral_norm(Conv1d(in_c, out_c, kernel_size, stride=down, padding=kernel_size // 2))
       for in_c, out_c, kernel_size, down in zip([1] + out_channels[:-1], out_channels, kernels, downsamples)
     ])
 

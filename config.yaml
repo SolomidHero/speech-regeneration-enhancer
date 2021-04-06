@@ -1,5 +1,5 @@
 opt:
-  lr: 3e-4
+  lr: 1e-4
   betas: [0.9, 0.999]
   lr_decay: 0.995   # per epoch
 
@@ -42,7 +42,7 @@ train:
   summary_interval: 100
   validation_interval: 1000
   lambda_adv: 4.0
-  grad_clip_value: 1.0
+  grad_norm_clip_value: 1.0
   ckpt_dir: 'ckpts'
   logs_dir: 'logs'
 
