@@ -13,8 +13,6 @@ import torch
 from pathlib import Path
 from hydra.experimental import compose, initialize
 
-torch.autograd.set_detect_anomaly(True)
-
 @pytest.fixture(scope="module")
 def n_files(cfg):
   n_files = 0
