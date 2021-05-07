@@ -1,4 +1,4 @@
-https://github.com/pyannote/pyannote-audio/archive/develop.zip
+git+git://github.com/pyannote/pyannote-audio.git@18ed481c7ef7aa7239dc49e269703b7fbbcf6753
 torchaudio>=0.7.2
 torch>=1.7.1
 torch_optimizer==0.1.0

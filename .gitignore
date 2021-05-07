@@ -1,2 +1,8 @@
 **/__pycache__/
+**/.pytest_cache/
+
 **/.DS_Store
+
+tests/test_dataset/
+tests/test_experiment/
+tests/test_logs/
