@@ -1,0 +1,27 @@
+stages:
+  preprocess:
+    cmd: python3 preprocess.py dataset.wav_dir=tests/data
+    deps:
+    - preprocess.py
+    params:
+    - config.yaml:
+      - data
+      - dataset
+    outs:
+    - data
+  train:
+    cmd: python3 train.py train.ckpt_dir=exp_ckpts train.logs_dir=exp_logs train.batch_size=1
+      train.epochs=10 train.checkpoint_interval=10 train.validation_interval=10
+    deps:
+    - data
+    - train.py
+    params:
+    - config.yaml:
+      - data
+      - dataset
+      - model
+      - seed
+      - train
+    outs:
+    - exp_ckpts
+    - exp_logs

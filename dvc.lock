@@ -1,0 +1,141 @@
+schema: '2.0'
+stages:
+  preprocess:
+    cmd: python3 preprocess.py dataset.wav_dir=tests/data
+    deps:
+    - path: preprocess.py
+      md5: c68d62690b22efc45fbb173212686e7c
+      size: 2982
+    params:
+      config.yaml:
+        data:
+          segment_size: 9600
+          sample_rate: 16000
+          target_sample_rate: 24000
+          hop_length: 320
+          n_fft: 1280
+          win_length: 1280
+          f_min: 50
+          f_max:
+        dataset:
+          wav_dir: data/wavs
+          ppg_dir: data/ppg
+          f0_dir: data/f0
+          loudness_dir: data/loudness
+          spk_embs_file: data/spk_embs.pt
+          train_list: data/train.list
+          test_list: data/test.list
+    outs:
+    - path: data
+      md5: d5a01d5b45d55f1417f210e6054bb545.dir
+      size: 712086
+      nfiles: 9
+  train:
+    cmd: python3 train.py train.ckpt_dir=exp_ckpts train.logs_dir=exp_logs train.batch_size=1
+      train.epochs=10 train.checkpoint_interval=10 train.validation_interval=10
+    deps:
+    - path: data
+      md5: d5a01d5b45d55f1417f210e6054bb545.dir
+      size: 712086
+      nfiles: 9
+    - path: train.py
+      md5: c55ad4192429f80a6b9de5ba2d773108
+      size: 9120
+    params:
+      config.yaml:
+        data:
+          segment_size: 9600
+          sample_rate: 16000
+          target_sample_rate: 24000
+          hop_length: 320
+          n_fft: 1280
+          win_length: 1280
+          f_min: 50
+          f_max:
+        dataset:
+          wav_dir: data/wavs
+          ppg_dir: data/ppg
+          f0_dir: data/f0
+          loudness_dir: data/loudness
+          spk_embs_file: data/spk_embs.pt
+          train_list: data/train.list
+          test_list: data/test.list
+        model:
+          feature_dims:
+          - 768
+          - 1
+          - 1
+          cond_dims:
+          - 512
+          - 128
+          generator:
+            hidden_dim: 768
+            n_blocks: 7
+            upsamples:
+            - 2
+            - 2
+            - 2
+            - 3
+            - 4
+            - 5
+            channel_divs:
+            - 1
+            - 1
+            - 2
+            - 1
+            - 1
+            - 2
+            - 2
+          discriminator:
+            out_channels:
+            - 16
+            - 64
+            - 256
+            - 1024
+            - 1024
+            - 1024
+            - 1
+            kernels:
+            - 15
+            - 41
+            - 41
+            - 41
+            - 41
+            - 5
+            - 3
+            downsamples:
+            - 1
+            - 2
+            - 2
+            - 4
+            - 4
+            - 1
+            - 1
+            lrelu_slope: 0.2
+        seed: 17
+        train:
+          batch_size: 16
+          epochs: 1000
+          num_workers: 4
+          n_gpu:
+          stdout_interval: 20
+          checkpoint_interval: 5000
+          summary_interval: 100
+          validation_interval: 1000
+          lambda_adv: 4.0
+          grad_norm_clip_value: 1.0
+          ckpt_dir: ckpts
+          logs_dir: logs
+          dist_config:
+            dist_backend: nccl
+            dist_url: tcp://localhost:54321
+            world_size: 1
+    outs:
+    - path: exp_ckpts
+      md5: b520f9691d17329bc76febdaf5742a33.dir
+      size: 2388880764
+      nfiles: 4
+    - path: exp_logs
+      md5: 65eb50df5a3863aec2ba35f0c303cdd6.dir
+      size: 77444
+      nfiles: 1

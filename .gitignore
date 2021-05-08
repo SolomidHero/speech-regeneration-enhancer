@@ -6,3 +6,7 @@
 tests/test_dataset/
 tests/test_experiment/
 tests/test_logs/
+
+/data
+/exp_ckpts
+/exp_logs
